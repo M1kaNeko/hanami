@@ -4,3 +4,4 @@ app/release/
 work/
 .superpowers/
 .DS_Store
+outputs/*.zip

@@ -1,7 +1,15 @@
-import {createServer} from 'vite';
-import {spawn} from 'node:child_process';
-import electron from 'electron';
-await import('./build.mjs');
-const server=await createServer({server:{host:'127.0.0.1',port:5173,strictPort:true}});await server.listen();
-const child=spawn(electron,['.'],{stdio:'inherit',env:{...process.env,VITE_DEV_SERVER_URL:'http://127.0.0.1:5173'}});
-child.on('exit',async code=>{await server.close();process.exit(code||0)});
+import { preview } from "vite";
+import { spawn } from "node:child_process";
+import electron from "electron";
+const server = await preview({
+  configLoader: "runner",
+  preview: { host: "127.0.0.1", port: 5173, strictPort: true },
+});
+const child = spawn(electron, ["."], {
+  stdio: "inherit",
+  env: { ...process.env, VITE_DEV_SERVER_URL: "http://127.0.0.1:5173" },
+});
+child.on("exit", () => {
+  server.httpServer.close();
+  process.exit();
+});
