@@ -1062,3 +1062,20 @@ button:active {
     width: 105px;
   }
 }
+
+.game-card[draggable="true"] {
+  cursor: grab;
+}
+.game-card.is-dragging {
+  opacity: 0.45;
+  transform: scale(0.98);
+}
+.nav button.drag-over,
+.nav button.active.drag-over {
+  background: #d9e7cd;
+  color: #365b36;
+  box-shadow: inset 0 0 0 2px #96b186;
+}
+.nav button.drag-over .nav-count {
+  color: #365b36;
+}

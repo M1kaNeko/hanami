@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useRef } from "react";
+import { useEffect, useMemo, useState, useRef, type DragEvent } from "react";
 import {
   Flower2,
   Library,
@@ -27,10 +27,11 @@ import type { DesktopApi } from "../shared/api";
 import { statuses, type Game, type GameStatus } from "../shared/model";
 import { filterGames } from "../shared/library";
 import { desktopApi, unwrap } from "./api";
-import { GameCard } from "./components/GameCard";
+import { GameCard, GAME_DRAG_TYPE } from "./components/GameCard";
 import { GameEditor } from "./components/GameEditor";
 import { GameDetails } from "./components/GameDetails";
 import { Modal } from "./components/Modal";
+import { version } from "../../package.json";
 const navigation = [
   { id: "all", label: "全部游戏", icon: Library },
   { id: "wishlist", label: "想玩", icon: Heart },
@@ -53,6 +54,7 @@ export default function App({ api = desktopApi }: { api?: DesktopApi }) {
     [selectedId, setSelectedId] = useState<string | null>(null),
     [confirmation, setConfirmation] = useState<Confirmation | null>(null),
     [busy, setBusy] = useState(false),
+    [dropTarget, setDropTarget] = useState<GameStatus | null>(null),
     [toast, setToast] = useState<{ message: string; error: boolean } | null>(
       null,
     );
@@ -107,6 +109,32 @@ export default function App({ api = desktopApi }: { api?: DesktopApi }) {
     } finally {
       setBusy(false);
     }
+  }
+  function dropGame(
+    event: DragEvent<HTMLButtonElement>,
+    target: GameStatus | "all",
+  ) {
+    setDropTarget(null);
+    if (
+      target === "all" ||
+      busy ||
+      !event.dataTransfer.types.includes(GAME_DRAG_TYPE)
+    )
+      return;
+    event.preventDefault();
+    const game = games.find(
+      (g) => g.id === event.dataTransfer.getData(GAME_DRAG_TYPE),
+    );
+    if (!game || game.status === target) return;
+    void action(async () => {
+      const updated = unwrap(
+        await api.saveGame({ ...game, status: target }, game.id),
+      );
+      setGames((current) =>
+        current.map((g) => (g.id === updated.id ? updated : g)),
+      );
+      notify(`已将「${game.name}」移到${statuses[target]}`);
+    });
   }
   async function launch(game: Game) {
     await action(async () => {
@@ -171,7 +199,29 @@ export default function App({ api = desktopApi }: { api?: DesktopApi }) {
           {navigation.map((n) => (
             <button
               key={n.id}
-              className={status === n.id ? "active" : ""}
+              className={`${status === n.id ? "active" : ""} ${dropTarget === n.id ? "drag-over" : ""}`}
+              title={
+                n.id === "all" ? "全部游戏" : `把游戏拖到这里，标记为${n.label}`
+              }
+              onDragOver={(event) => {
+                if (
+                  n.id === "all" ||
+                  busy ||
+                  !event.dataTransfer.types.includes(GAME_DRAG_TYPE)
+                )
+                  return;
+                event.preventDefault();
+                event.dataTransfer.dropEffect = "move";
+                setDropTarget(n.id);
+              }}
+              onDragLeave={(event) => {
+                if (
+                  !(event.relatedTarget instanceof Node) ||
+                  !event.currentTarget.contains(event.relatedTarget)
+                )
+                  setDropTarget(null);
+              }}
+              onDrop={(event) => dropGame(event, n.id)}
               onClick={() => setStatus(n.id)}
               aria-current={status === n.id ? "page" : undefined}
             >
@@ -206,7 +256,7 @@ export default function App({ api = desktopApi }: { api?: DesktopApi }) {
             <br />
             心动会一直留下来。
           </p>
-          <p className="version">HANAMI · v0.1.0</p>
+          <p className="version">HANAMI · v{version}</p>
         </div>
       </aside>
       <main className="main">
@@ -394,6 +444,7 @@ export default function App({ api = desktopApi }: { api?: DesktopApi }) {
                   key={game.id}
                   game={game}
                   busy={busy}
+                  onDragEnd={() => setDropTarget(null)}
                   onOpen={() => setSelectedId(game.id)}
                   onLaunch={() => launch(game)}
                 />

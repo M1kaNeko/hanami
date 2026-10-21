@@ -1,12 +1,15 @@
+import { useState } from "react";
 import { Play, Star } from "lucide-react";
 import { statuses, type Game } from "../../shared/model";
 import { coverUrl } from "../api";
+export const GAME_DRAG_TYPE = "application/x-hanami-game";
 export function Cover({ game }: { game: Game }) {
   const img = coverUrl(game.cover);
   return (
     <div className="cover">
       {img ? (
         <img
+          draggable={false}
           src={img}
           alt={`${game.name} 封面`}
           onError={(e) => {
@@ -29,14 +32,34 @@ export function GameCard({
   onOpen,
   onLaunch,
   busy,
+  onDragEnd,
 }: {
   game: Game;
   onOpen: () => void;
   onLaunch: () => void;
   busy: boolean;
+  onDragEnd: () => void;
 }) {
+  const [dragging, setDragging] = useState(false);
   return (
-    <article className="game-card">
+    <article
+      className={`game-card ${dragging ? "is-dragging" : ""}`}
+      draggable={!busy}
+      onDragStart={(event) => {
+        if (busy) {
+          event.preventDefault();
+          return;
+        }
+        event.dataTransfer.setData(GAME_DRAG_TYPE, game.id);
+        event.dataTransfer.effectAllowed = "move";
+        setDragging(true);
+      }}
+      onDragEnd={() => {
+        setDragging(false);
+        onDragEnd();
+      }}
+      title="拖到左侧游玩状态即可移动"
+    >
       <button
         className="cover-button"
         aria-label={`查看 ${game.name}`}

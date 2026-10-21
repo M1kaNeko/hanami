@@ -1,7 +1,13 @@
 // @vitest-environment jsdom
 import React from "react";
 import { it, expect, afterEach } from "vitest";
-import { render, screen, cleanup, waitFor } from "@testing-library/react";
+import {
+  render,
+  screen,
+  cleanup,
+  waitFor,
+  fireEvent,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom/vitest";
 import App from "../src/renderer/App";
@@ -42,4 +48,165 @@ it("保存失败时保留编辑内容", async () => {
   await user.click(screen.getByRole("button", { name: "保存游戏" }));
   expect(await screen.findByText("磁盘写入失败")).toBeInTheDocument();
   expect(screen.getByLabelText("游戏名称")).toHaveValue("不要丢掉");
+});
+
+it("选择程序自动使用不带扩展名的游戏名，重新选择时同步更新", async () => {
+  const api = createPreviewApi();
+  let path = "D:\\Games\\Summer\\夏日回忆.EXE";
+  api.selectDirectory = async () => ({ ok: true, value: "D:\\Games\\Summer" });
+  api.selectExecutable = async () => ({ ok: true, value: path });
+  const user = userEvent.setup();
+  render(<App api={api} />);
+  await screen.findByText("每个故事，都值得珍藏。");
+  await user.click(screen.getAllByRole("button", { name: /添加游戏/ })[0]);
+  await user.click(screen.getByRole("button", { name: "选择游戏目录" }));
+  await user.click(screen.getByRole("button", { name: "选择启动程序" }));
+  expect(screen.getByLabelText("游戏名称")).toHaveValue("夏日回忆");
+  path = "D:\\Games\\Summer\\星空的约定.exe";
+  await user.click(screen.getByRole("button", { name: "选择启动程序" }));
+  expect(screen.getByLabelText("游戏名称")).toHaveValue("星空的约定");
+});
+it("自动命名保留手填名称，通用启动程序用目录名，取消选择不修改", async () => {
+  const api = createPreviewApi();
+  api.selectExecutable = async () => ({
+    ok: true,
+    value: "D:\\Games\\夏日回忆\\game.exe",
+  });
+  const user = userEvent.setup();
+  render(<App api={api} />);
+  await screen.findByText("每个故事，都值得珍藏。");
+  await user.click(screen.getAllByRole("button", { name: /添加游戏/ })[0]);
+  await user.type(screen.getByLabelText("游戏目录"), "D:\\Games\\夏日回忆");
+  await user.click(screen.getByRole("button", { name: "选择启动程序" }));
+  expect(screen.getByLabelText("游戏名称")).toHaveValue("夏日回忆");
+  await user.clear(screen.getByLabelText("游戏名称"));
+  await user.type(screen.getByLabelText("游戏名称"), "我的特别命名");
+  await user.click(screen.getByRole("button", { name: "选择启动程序" }));
+  expect(screen.getByLabelText("游戏名称")).toHaveValue("我的特别命名");
+  api.selectExecutable = async () => ({ ok: true, value: null });
+  await user.click(screen.getByRole("button", { name: "选择启动程序" }));
+  expect(screen.getByLabelText("游戏名称")).toHaveValue("我的特别命名");
+});
+it("编辑已有游戏时重新选程序也保留原名", async () => {
+  const api = createPreviewApi();
+  await api.saveGame({
+    name: "已收藏的名字",
+    directory: "D:\\Games\\Summer",
+    executable: "D:\\Games\\Summer\\old.exe",
+    cover: null,
+    tags: [],
+    status: "wishlist",
+    rating: null,
+    notes: "",
+  });
+  api.selectExecutable = async () => ({
+    ok: true,
+    value: "D:\\Games\\Summer\\new.exe",
+  });
+  const user = userEvent.setup();
+  render(<App api={api} />);
+  await user.click(
+    await screen.findByRole("button", { name: "查看 已收藏的名字" }),
+  );
+  await user.click(screen.getByRole("button", { name: "修改路径与记录" }));
+  await user.click(screen.getByRole("button", { name: "选择启动程序" }));
+  expect(screen.getByLabelText("游戏名称")).toHaveValue("已收藏的名字");
+});
+
+function dragPayload() {
+  const values = new Map<string, string>();
+  return {
+    types: [] as string[],
+    effectAllowed: "none",
+    dropEffect: "none",
+    setData(type: string, value: string) {
+      values.set(type, value);
+      this.types = [...values.keys()];
+    },
+    getData(type: string) {
+      return values.get(type) ?? "";
+    },
+  };
+}
+it.each(["grid", "list"])(
+  "游戏卡片可从 %s 视图拖到在玩并保存，筛选与计数同步",
+  async (layout) => {
+    const api = createPreviewApi();
+    const seeded = await api.saveGame({
+      name: "拖拽测试",
+      directory: "D:\\Games",
+      executable: "D:\\Games\\a.exe",
+      cover: null,
+      tags: [],
+      status: "wishlist",
+      rating: 8,
+      notes: "保持笔记",
+    });
+    const user = userEvent.setup();
+    render(<App api={api} />);
+    await screen.findByRole("button", { name: "查看 拖拽测试" });
+    await user.click(screen.getByRole("button", { name: /^想玩/ }));
+    if (layout === "list")
+      await user.click(screen.getByRole("button", { name: "列表视图" }));
+    const card = screen
+      .getByRole("button", { name: "查看 拖拽测试" })
+      .closest("article")!;
+    expect(card).toHaveAttribute("draggable", "true");
+    const transfer = dragPayload(),
+      target = screen.getByRole("button", { name: /^在玩/ });
+    fireEvent.dragStart(card, { dataTransfer: transfer });
+    fireEvent.dragOver(target, { dataTransfer: transfer });
+    expect(target).toHaveClass("drag-over");
+    fireEvent.drop(target, { dataTransfer: transfer });
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("button", { name: "查看 拖拽测试" }),
+      ).not.toBeInTheDocument(),
+    );
+    expect(target).toHaveTextContent("1");
+    const result = await api.listGames();
+    expect(result.ok && result.value[0]).toMatchObject({
+      status: "playing",
+      rating: 8,
+      notes: "保持笔记",
+    });
+    await user.click(target);
+    expect(
+      await screen.findByRole("button", { name: "查看 拖拽测试" }),
+    ).toBeInTheDocument();
+  },
+);
+it("拖拽保存失败保留原状态，外部文本拖入不生效", async () => {
+  const api = createPreviewApi();
+  await api.saveGame({
+    name: "保留状态",
+    directory: "D:\\Games",
+    executable: "D:\\Games\\a.exe",
+    cover: null,
+    tags: [],
+    status: "wishlist",
+    rating: null,
+    notes: "",
+  });
+  api.saveGame = async () => ({
+    ok: false,
+    error: { code: "WRITE", message: "拖拽保存失败" },
+  });
+  render(<App api={api} />);
+  const card = (
+      await screen.findByRole("button", { name: "查看 保留状态" })
+    ).closest("article")!,
+    target = screen.getByRole("button", { name: /^在玩/ }),
+    transfer = dragPayload();
+  fireEvent.dragStart(card, { dataTransfer: transfer });
+  fireEvent.drop(target, { dataTransfer: transfer });
+  expect(await screen.findByText("拖拽保存失败")).toBeInTheDocument();
+  const current = await api.listGames();
+  expect(current.ok && current.value[0].status).toBe("wishlist");
+  const external = dragPayload();
+  external.setData("text/plain", "external");
+  fireEvent.dragOver(target, { dataTransfer: external });
+  expect(target).not.toHaveClass("drag-over");
+  fireEvent.drop(target, { dataTransfer: external });
+  expect(screen.getByRole("button", { name: /^想玩/ })).toHaveTextContent("1");
 });

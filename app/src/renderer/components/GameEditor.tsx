@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
 import { FolderOpen, ImagePlus, Save } from "lucide-react";
 import type { DesktopApi, Selection } from "../../shared/api";
 import { statuses, type Game, type GameDraft } from "../../shared/model";
@@ -33,7 +33,9 @@ export function GameEditor({
     [cover, setCover] = useState<Selection | null>(null),
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false);
+  const nameEdited = useRef(Boolean(game?.name.trim()));
   function change<K extends keyof GameDraft>(k: K, value: GameDraft[K]) {
+    if (k === "name") nameEdited.current = Boolean(String(value).trim());
     setDraft((d) => ({ ...d, [k]: value }));
   }
   async function browse(type: "directory" | "executable" | "cover") {
@@ -46,12 +48,33 @@ export function GameEditor({
             ...d,
             directory: dir,
             executable: "",
-            name: d.name || dir.split(/[\\/]/).filter(Boolean).at(-1) || "",
+            name: nameEdited.current
+              ? d.name
+              : (dir.split(/[\\/]/).filter(Boolean).at(-1) || "").slice(0, 200),
           }));
       } else if (type === "executable") {
         if (!draft.directory) throw Error("请先选择或填写游戏目录");
         const file = unwrap(await api.selectExecutable(draft.directory));
-        if (file) change("executable", file);
+        if (file)
+          setDraft((d) => {
+            const stem =
+              file
+                .split(/[\\/]/)
+                .at(-1)
+                ?.replace(/\.exe$/i, "") ?? "";
+            const folder =
+              d.directory.split(/[\\/]/).filter(Boolean).at(-1) ?? "";
+            const suggested = (
+              !stem || /^(game|start|launch|launcher|main|play)$/i.test(stem)
+                ? folder
+                : stem
+            ).slice(0, 200);
+            return {
+              ...d,
+              executable: file,
+              name: nameEdited.current ? d.name : suggested,
+            };
+          });
       } else {
         const image = unwrap(await api.selectCover());
         if (image) setCover(image);
@@ -137,6 +160,9 @@ export function GameEditor({
                 value={draft.name}
                 onChange={(e) => change("name", e.target.value)}
               />
+              <span className="hint">
+                选择启动程序后自动填写，也可以自己修改。
+              </span>
             </label>
             <label className="field full">
               游戏目录

@@ -2,6 +2,7 @@ import { downloadArtifact } from "@electron/get";
 import extract from "extract-zip";
 import { cp, mkdir, readFile, writeFile, rename, rm } from "node:fs/promises";
 import { resolve, join } from "node:path";
+const appPackage = JSON.parse(await readFile("package.json", "utf8"));
 const arch = process.argv[2] ?? "arm64";
 if (!["arm64", "x64"].includes(arch)) throw Error("Only arm64 or x64");
 const version = JSON.parse(
@@ -39,7 +40,7 @@ await writeFile(
   JSON.stringify({
     name: "galgame-manager",
     productName: "Hanami",
-    version: "0.1.0",
+    version: appPackage.version,
     main: "dist/main/index.cjs",
     description: "花间 · Galgame 管理器",
   }),
