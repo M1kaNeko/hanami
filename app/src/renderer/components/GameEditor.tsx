@@ -57,17 +57,8 @@ export function GameEditor({
         const file = unwrap(await api.selectExecutable(draft.directory));
         if (file)
           setDraft((d) => {
-            const stem =
-              file
-                .split(/[\\/]/)
-                .at(-1)
-                ?.replace(/\.exe$/i, "") ?? "";
-            const folder =
-              d.directory.split(/[\\/]/).filter(Boolean).at(-1) ?? "";
             const suggested = (
-              !stem || /^(game|start|launch|launcher|main|play)$/i.test(stem)
-                ? folder
-                : stem
+              d.directory.split(/[\\/]/).filter(Boolean).at(-1) ?? ""
             ).slice(0, 200);
             return {
               ...d,
@@ -161,7 +152,7 @@ export function GameEditor({
                 onChange={(e) => change("name", e.target.value)}
               />
               <span className="hint">
-                选择启动程序后自动填写，也可以自己修改。
+                默认使用游戏文件夹名，也可以自己修改。
               </span>
             </label>
             <label className="field full">

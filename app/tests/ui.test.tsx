@@ -50,7 +50,7 @@ it("保存失败时保留编辑内容", async () => {
   expect(screen.getByLabelText("游戏名称")).toHaveValue("不要丢掉");
 });
 
-it("选择程序自动使用不带扩展名的游戏名，重新选择时同步更新", async () => {
+it("选择不同程序都使用游戏目录名，不使用 exe 文件名", async () => {
   const api = createPreviewApi();
   let path = "D:\\Games\\Summer\\夏日回忆.EXE";
   api.selectDirectory = async () => ({ ok: true, value: "D:\\Games\\Summer" });
@@ -61,12 +61,12 @@ it("选择程序自动使用不带扩展名的游戏名，重新选择时同步�
   await user.click(screen.getAllByRole("button", { name: /添加游戏/ })[0]);
   await user.click(screen.getByRole("button", { name: "选择游戏目录" }));
   await user.click(screen.getByRole("button", { name: "选择启动程序" }));
-  expect(screen.getByLabelText("游戏名称")).toHaveValue("夏日回忆");
+  expect(screen.getByLabelText("游戏名称")).toHaveValue("Summer");
   path = "D:\\Games\\Summer\\星空的约定.exe";
   await user.click(screen.getByRole("button", { name: "选择启动程序" }));
-  expect(screen.getByLabelText("游戏名称")).toHaveValue("星空的约定");
+  expect(screen.getByLabelText("游戏名称")).toHaveValue("Summer");
 });
-it("自动命名保留手填名称，通用启动程序用目录名，取消选择不修改", async () => {
+it("文件夹默认命名保留手填名称，取消选择不修改", async () => {
   const api = createPreviewApi();
   api.selectExecutable = async () => ({
     ok: true,
@@ -209,4 +209,34 @@ it("拖拽保存失败保留原状态，外部文本拖入不生效", async () =
   expect(target).not.toHaveClass("drag-over");
   fireEvent.drop(target, { dataTransfer: external });
   expect(screen.getByRole("button", { name: /^想玩/ })).toHaveTextContent("1");
+});
+it("顶部切换配色，重新打开界面后仍保留选择", async () => {
+  localStorage.clear();
+  const user = userEvent.setup(),
+    api = createPreviewApi();
+  render(<App api={api} />);
+  await user.click(screen.getByRole("button", { name: "切换配色" }));
+  await user.click(screen.getByRole("button", { name: "樱花粉" }));
+  expect(document.documentElement.dataset.theme).toBe("pink");
+  cleanup();
+  render(<App api={api} />);
+  expect(document.documentElement.dataset.theme).toBe("pink");
+  await user.click(screen.getByRole("button", { name: "切换配色" }));
+  expect(screen.getByRole("button", { name: "樱花粉" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await user.click(screen.getByRole("button", { name: "雾蓝" }));
+  expect(document.documentElement.dataset.theme).toBe("blue");
+  cleanup();
+  render(<App api={api} />);
+  expect(document.documentElement.dataset.theme).toBe("blue");
+  localStorage.clear();
+});
+it("无效的配色记录回退默认配色，仍能读取游戏库", async () => {
+  localStorage.setItem("hanami.theme", "unknown");
+  render(<App api={createPreviewApi()} />);
+  expect(await screen.findByText("每个故事，都值得珍藏。")).toBeInTheDocument();
+  expect(document.documentElement.dataset.theme).toBe("green");
+  localStorage.clear();
 });

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, useRef, type DragEvent } from "react";
 import {
+  Palette,
   Flower2,
   Library,
   Heart,
@@ -32,6 +33,20 @@ import { GameEditor } from "./components/GameEditor";
 import { GameDetails } from "./components/GameDetails";
 import { Modal } from "./components/Modal";
 import { version } from "../../package.json";
+const themes = {
+  green: { label: "青苔绿", accent: "#496852", surface: "#f0f2ec" },
+  pink: { label: "樱花粉", accent: "#95636f", surface: "#f6edf0" },
+  blue: { label: "雾蓝", accent: "#516f90", surface: "#edf2f8" },
+} as const;
+type Theme = keyof typeof themes;
+function initialTheme(): Theme {
+  try {
+    const saved = localStorage.getItem("hanami.theme");
+    return saved && Object.hasOwn(themes, saved) ? (saved as Theme) : "green";
+  } catch {
+    return "green";
+  }
+}
 const navigation = [
   { id: "all", label: "全部游戏", icon: Library },
   { id: "wishlist", label: "想玩", icon: Heart },
@@ -43,6 +58,14 @@ type Confirmation =
   | { kind: "delete"; game: Game }
   | { kind: "import"; token: string; count: number };
 export default function App({ api = desktopApi }: { api?: DesktopApi }) {
+  const [theme, setTheme] = useState<Theme>(initialTheme),
+    [themeOpen, setThemeOpen] = useState(false);
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    try {
+      localStorage.setItem("hanami.theme", theme);
+    } catch {}
+  }, [theme]);
   const [games, setGames] = useState<Game[]>([]),
     [loaded, setLoaded] = useState(false),
     [loadError, setLoadError] = useState(""),
@@ -278,6 +301,14 @@ export default function App({ api = desktopApi }: { api?: DesktopApi }) {
             </span>
             <button
               className="icon-button"
+              aria-label="切换配色"
+              title="切换配色"
+              onClick={() => setThemeOpen(true)}
+            >
+              <Palette size={15} />
+            </button>
+            <button
+              className="icon-button"
               onClick={load}
               aria-label="刷新书架"
               title="刷新书架"
@@ -487,6 +518,38 @@ export default function App({ api = desktopApi }: { api?: DesktopApi }) {
           </footer>
         </div>
       </main>
+      {themeOpen && (
+        <Modal title="书架配色" onClose={() => setThemeOpen(false)}>
+          <p className="theme-description">给你的书架换一种心情。</p>
+          <div className="theme-options">
+            {Object.entries(themes).map(([id, preset]) => (
+              <button
+                key={id}
+                className="theme-choice"
+                aria-label={preset.label}
+                aria-pressed={theme === id}
+                onClick={() => {
+                  setTheme(id as Theme);
+                  setThemeOpen(false);
+                }}
+              >
+                <span
+                  className="theme-preview"
+                  style={{ background: preset.surface }}
+                >
+                  <i style={{ background: preset.accent }} />
+                  <span style={{ background: preset.accent }} />
+                </span>
+                <span className="theme-label">
+                  {preset.label}
+                  {theme === id && <CheckCheck size={14} />}
+                </span>
+              </button>
+            ))}
+          </div>
+          <p className="hint theme-note">下次打开时，会保留这次选择。</p>
+        </Modal>
+      )}
       {selected && !editor && !confirmation && (
         <GameDetails
           game={selected}
