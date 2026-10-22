@@ -1,7 +1,7 @@
 {
   "name": "galgame-manager",
   "productName": "花间 · Galgame 管理器",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "private": true,
   "description": "你的本地 galgame 书架",
   "author": "Mika",
@@ -71,7 +71,16 @@
     "mac": {
       "identity": null,
       "category": "public.app-category.entertainment"
-    }
+    },
+    "extraResources": [
+      {
+        "from": "engines",
+        "to": "engines",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ]
   },
   "type": "module"
 }

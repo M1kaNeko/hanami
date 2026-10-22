@@ -9,6 +9,7 @@ export interface GameDraft {
   name: string;
   directory: string;
   executable: string;
+  launchMode?: "executable" | "kirikiri";
   cover: string | null;
   coverSource?: "manual" | "executable";
   tags: string[];

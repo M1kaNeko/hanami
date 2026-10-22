@@ -56,7 +56,7 @@ export function GameEditor({
     } else setDraft((d) => ({ ...d, [k]: value }));
   }
   async function defaultCover(executable: string): Promise<Selection | null> {
-    if (coverManual.current) return null;
+    if (coverManual.current || draft.launchMode === "kirikiri") return null;
     coverExecutable.current = executable.trim();
     const request = ++coverRequest.current;
     setCover(null);
@@ -137,6 +137,7 @@ export function GameEditor({
     try {
       let chosen = cover;
       if (
+        draft.launchMode !== "kirikiri" &&
         !coverManual.current &&
         draft.executable.trim() !== coverExecutable.current
       ) {
@@ -192,7 +193,9 @@ export function GameEditor({
             <p className="hint">
               PNG / JPG / WebP · 最大 10 MiB
               <br />
-              选择程序后默认使用 exe 图标。
+              {draft.launchMode === "kirikiri"
+                ? "内置引擎模式可手动选择封面。"
+                : "选择程序后默认使用 exe 图标。"}
             </p>
           </div>
           {img && (
@@ -232,6 +235,39 @@ export function GameEditor({
               </span>
             </label>
             <label className="field full">
+              启动方式
+              <select
+                aria-label="启动方式"
+                value={draft.launchMode ?? "executable"}
+                onChange={(e) => {
+                  const mode = e.target.value as GameDraft["launchMode"];
+                  coverRequest.current++;
+                  coverExecutable.current = "";
+                  setCoverBusy(false);
+                  if (!coverManual.current) setCover(null);
+                  setDraft((d) => ({
+                    ...d,
+                    launchMode: mode,
+                    executable: "",
+                    cover: coverManual.current ? d.cover : null,
+                    coverSource: coverManual.current
+                      ? d.coverSource
+                      : undefined,
+                  }));
+                }}
+              >
+                <option value="executable">直接启动 exe</option>
+                <option value="kirikiri">内置吉里吉里 Z</option>
+              </select>
+              {draft.launchMode === "kirikiri" && (
+                <span className="hint">
+                  选择含 startup.tjs、data/startup.tjs 或 data.xp3
+                  的完整目录。游戏在独立窗口打开；部分专用插件或加密游戏需要原
+                  exe。存档由花间按游戏分开保存，书架备份不包含存档。
+                </span>
+              )}
+            </label>
+            <label className="field full">
               游戏目录
               <div className="input-action">
                 <input
@@ -251,42 +287,44 @@ export function GameEditor({
                 </button>
               </div>
             </label>
-            <label className="field full">
-              启动程序
-              <div className="input-action">
-                <input
-                  aria-label="启动程序"
-                  required
-                  placeholder="选择游戏目录里的 .exe 文件"
-                  value={draft.executable}
-                  onChange={(e) => change("executable", e.target.value)}
-                  onBlur={(e) => {
-                    if (
-                      e.relatedTarget instanceof HTMLButtonElement &&
-                      e.relatedTarget.type === "submit"
-                    )
-                      return;
-                    const value = e.target.value.trim();
-                    if (
-                      /\.exe$/i.test(value) &&
-                      value !== coverExecutable.current
-                    )
-                      void defaultCover(value);
-                  }}
-                />
-                <button
-                  type="button"
-                  className="secondary"
-                  aria-label="选择启动程序"
-                  onClick={() => browse("executable")}
-                >
-                  <FolderOpen size={15} />
-                </button>
-              </div>
-              <span className="hint">
-                在 Windows 中选择游戏实际所在的路径。
-              </span>
-            </label>
+            {draft.launchMode !== "kirikiri" && (
+              <label className="field full">
+                启动程序
+                <div className="input-action">
+                  <input
+                    aria-label="启动程序"
+                    required
+                    placeholder="选择游戏目录里的 .exe 文件"
+                    value={draft.executable}
+                    onChange={(e) => change("executable", e.target.value)}
+                    onBlur={(e) => {
+                      if (
+                        e.relatedTarget instanceof HTMLButtonElement &&
+                        e.relatedTarget.type === "submit"
+                      )
+                        return;
+                      const value = e.target.value.trim();
+                      if (
+                        /\.exe$/i.test(value) &&
+                        value !== coverExecutable.current
+                      )
+                        void defaultCover(value);
+                    }}
+                  />
+                  <button
+                    type="button"
+                    className="secondary"
+                    aria-label="选择启动程序"
+                    onClick={() => browse("executable")}
+                  >
+                    <FolderOpen size={15} />
+                  </button>
+                </div>
+                <span className="hint">
+                  在 Windows 中选择游戏实际所在的路径。
+                </span>
+              </label>
+            )}
             <label className="field">
               游玩状态
               <select

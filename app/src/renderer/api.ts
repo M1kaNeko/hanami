@@ -1,6 +1,6 @@
 import type { DesktopApi, Result, Selection } from "../shared/api";
 import type { Game } from "../shared/model";
-import { validateDraft, normalizeExecutable } from "../shared/validation";
+import { validateDraft, launchKey } from "../shared/validation";
 const previewCovers = new Map<string, string>();
 export function coverUrl(ref: string | null): string | undefined {
   return ref ? (previewCovers.get(ref) ?? `covers://image/${ref}`) : undefined;
@@ -20,14 +20,7 @@ export function createPreviewApi(): DesktopApi {
     saveGame: async (draft, id, token) => {
       try {
         const d = validateDraft(draft);
-        if (
-          games.some(
-            (g) =>
-              g.id !== id &&
-              normalizeExecutable(g.executable) ===
-                normalizeExecutable(d.executable),
-          )
-        )
+        if (games.some((g) => g.id !== id && launchKey(g) === launchKey(d)))
           throw Error("这个启动程序已经添加过了");
         const old = games.find((g) => g.id === id),
           now = new Date().toISOString();

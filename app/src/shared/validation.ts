@@ -33,8 +33,17 @@ export function validateDraft(input: unknown): GameDraft {
   const d = record(input);
   const name = text(d.name, 200, true),
     directory = text(d.directory, 4000, true),
-    executable = text(d.executable, 4000, true);
-  if (!/\.exe$/i.test(executable)) throw Error("请选择 .exe 启动程序");
+    executable = text(d.executable, 4000, d.launchMode !== "kirikiri");
+  if (
+    d.launchMode !== undefined &&
+    d.launchMode !== "executable" &&
+    d.launchMode !== "kirikiri"
+  )
+    throw Error("启动方式不正确");
+  if (d.launchMode !== "kirikiri" && !/\.exe$/i.test(executable))
+    throw Error("请选择 .exe 启动程序");
+  if (d.launchMode === "kirikiri" && executable !== "")
+    throw Error("内置吉里吉里模式只需选择游戏目录");
   if (typeof d.status !== "string" || !Object.hasOwn(statuses, d.status))
     throw Error("游玩状态不正确");
   if (
@@ -58,6 +67,9 @@ export function validateDraft(input: unknown): GameDraft {
     ...(d.coverSource === undefined
       ? {}
       : { coverSource: d.coverSource as GameDraft["coverSource"] }),
+    ...(d.launchMode === undefined
+      ? {}
+      : { launchMode: d.launchMode as GameDraft["launchMode"] }),
     name,
     directory,
     executable,
@@ -84,7 +96,7 @@ export function validateLibrary(input: unknown): Library {
     const id = text(g.id, 100, true);
     if (ids.has(id)) throw Error("游戏 ID 重复");
     ids.add(id);
-    const p = normalizeExecutable(draft.executable);
+    const p = launchKey(draft);
     if (paths.has(p)) throw Error("启动路径重复");
     paths.add(p);
     function time(v: unknown) {
@@ -101,4 +113,12 @@ export function validateLibrary(input: unknown): Library {
     };
   });
   return { schemaVersion: 1, games };
+}
+
+export function launchKey(
+  game: Pick<GameDraft, "executable" | "directory" | "launchMode">,
+): string {
+  return game.launchMode === "kirikiri"
+    ? "kirikiri:" + normalizeExecutable(game.directory)
+    : normalizeExecutable(game.executable);
 }

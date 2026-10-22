@@ -77,3 +77,10 @@ it("点路径和连续分隔符归一到同一程序", () => {
     normalizeExecutable("C:\\Games\\a.exe"),
   );
 });
+it("吉里吉里目录启动无需 exe，模式会随书架保存", () => {
+  expect(
+    validateDraft({ ...draft, launchMode: "kirikiri", executable: "" }),
+  ).toMatchObject({ launchMode: "kirikiri", executable: "" });
+  expect(() => validateDraft({ ...draft, launchMode: "other" })).toThrow();
+  expect(() => validateDraft({ ...draft, executable: "" })).toThrow();
+});

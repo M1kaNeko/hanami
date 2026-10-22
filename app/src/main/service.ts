@@ -1,16 +1,19 @@
-import { randomUUID } from "node:crypto";
-import { join, win32 } from "node:path";
+import { createHash, randomUUID } from "node:crypto";
+import { join } from "node:path";
 import { readFile, readdir, rm } from "node:fs/promises";
 import type { GameDraft, Game } from "../shared/model";
 import {
-  normalizeExecutable,
+  launchKey,
   validateDraft,
   validateLibrary,
   validCover,
 } from "../shared/validation";
 import { createStore } from "./store";
-import { launchExecutable } from "./launcher";
-export function createService(root: string) {
+import { launchGame } from "./launcher";
+export function createService(
+  root: string,
+  options: { enginePath?: string } = {},
+) {
   const store = createStore(root);
   let queue: Promise<unknown> = Promise.resolve();
   function transaction<T>(fn: () => Promise<T>): Promise<T> {
@@ -47,10 +50,7 @@ export function createService(root: string) {
           throw Error("这条记录已不存在，请刷新");
         if (
           library.games.some(
-            (g) =>
-              g.id !== id &&
-              normalizeExecutable(g.executable) ===
-                normalizeExecutable(d.executable),
+            (g) => g.id !== id && launchKey(g) === launchKey(d),
           )
         )
           throw Error("这个启动程序已经添加过了");
@@ -84,7 +84,16 @@ export function createService(root: string) {
         const library = await store.read(),
           game = library.games.find((g) => g.id === id);
         if (!game) throw Error("这条记录已不存在");
-        await launchExecutable(game.executable, process.platform);
+        await launchGame(
+          game,
+          process.platform,
+          options.enginePath ?? "",
+          join(
+            root,
+            "saves",
+            createHash("sha256").update(game.id).digest("hex"),
+          ),
+        );
         game.lastLaunchedAt = new Date().toISOString();
         await store.save(library);
       }),

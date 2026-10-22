@@ -72,3 +72,23 @@ it("更换或移除封面后，上一版库的图片仍可读", async () => {
     "previous-cover",
   );
 });
+it("内置模式按目录去重，多个目录互不冲突，原 exe 记录照常保留", async () => {
+  const { s } = await service();
+  await s.save(draft);
+  await s.save({ ...draft, launchMode: "kirikiri", executable: "" });
+  await s.save({
+    ...draft,
+    launchMode: "kirikiri",
+    executable: "",
+    directory: "C:\\Other",
+  });
+  await expect(
+    s.save({
+      ...draft,
+      launchMode: "kirikiri",
+      executable: "",
+      directory: "c:/games",
+    }),
+  ).rejects.toThrow("已经添加");
+  expect(await s.list()).toHaveLength(3);
+});

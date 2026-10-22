@@ -1,3 +1,4 @@
+import { assertGamePaths } from "./game-paths";
 import { extractExecutableCover } from "./executable-cover";
 import { isTrustedUrl } from "./security";
 import {
@@ -17,7 +18,6 @@ import {
   isAbsolute,
   basename,
   extname,
-  win32,
 } from "node:path";
 import { pathToFileURL } from "node:url";
 import { readFile, stat, rm, realpath } from "node:fs/promises";
@@ -55,7 +55,14 @@ if (!gotLock) app.quit();
 else
   app.whenReady().then(async () => {
     const root = app.getPath("userData"),
-      service = createService(root);
+      service = createService(root, {
+        enginePath: join(
+          app.isPackaged ? process.resourcesPath : app.getAppPath(),
+          "engines",
+          "kirikiri",
+          "krkrz.exe",
+        ),
+      });
     let window: BrowserWindow | null = null;
     const covers = new Map<string, { source: string } | { data: Buffer }>(),
       imports = new Map<string, ValidatedBackup>();
@@ -133,16 +140,7 @@ else
               const draft = validateDraft(args[0]),
                 id = args[1] === undefined ? undefined : checkString(args[1]);
               let imported: string | undefined;
-              if (process.platform === "win32") {
-                if (
-                  !win32.isAbsolute(draft.directory) ||
-                  !win32.isAbsolute(draft.executable)
-                )
-                  throw Error("请选择 Windows 绝对路径");
-                const rel = win32.relative(draft.directory, draft.executable);
-                if (rel.startsWith("..") || win32.isAbsolute(rel))
-                  throw Error("启动程序需要位于游戏目录内");
-              }
+              assertGamePaths(draft, process.platform);
               try {
                 if (args[2]) {
                   const token = checkString(args[2]),

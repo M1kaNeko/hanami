@@ -1,0 +1,7 @@
+Hanami bundles an unmodified Kirikiri Z 1.4.0r2 Windows x86 runtime and its 32-bit plugins.
+Copyright (c) W.Dee and contributors; Kirikiri Z Project Contributors.
+Based in part on the work of the FreeType Team (https://www.freetype.org/) and the Independent JPEG Group.
+Upstream: https://krkrz.github.io/
+Original distribution notices: license.txt and readme.txt (Japanese CP932 encoding).
+Binary renamed from tvpwin32.exe to krkrz.exe; no binary modifications.
+See provenance.json for source URL and locally computed file checksums.

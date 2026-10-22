@@ -9,14 +9,15 @@
 完整解压后双击 `Hanami.exe`。保留同目录的 DLL、resources 等文件，不要只把 exe 拿出来。首次进入为空书架，没有预置游戏。
 
 1. 点“添加游戏”，选择 Windows 中实际的游戏文件夹。
-2. 选择该目录里的 `.exe` 启动程序。默认游戏名始终使用所选游戏文件夹名；更换启动程序也不会用 exe 名覆盖。手动填写和已有记录的名称会保留。Windows 选择程序后会默认提取 exe 图标，居中留白作为封面；手动封面优先，提取失败可继续添加。封面支持静态 PNG / JPEG / WebP，最大 10 MiB、2000 万像素。
+2. 启动方式可选“直接启动 exe”或“内置吉里吉里 Z”。内置模式选择包含 `startup.tjs`、`data/startup.tjs` 或 `data.xp3` 的完整游戏目录即可，不需要 exe；只支持兼容吉里吉里 Z 的游戏，部分定制插件、加密资源或其他引擎仍需原 exe。
+   直接启动时，选择该目录里的 `.exe` 启动程序。默认游戏名始终使用所选游戏文件夹名；更换启动程序也不会用 exe 名覆盖。手动填写和已有记录的名称会保留。Windows 选择程序后会默认提取 exe 图标，居中留白作为封面；手动封面优先，提取失败可继续添加。封面支持静态 PNG / JPEG / WebP，最大 10 MiB、2000 万像素。
 3. 保存后点击封面进入详情，编辑状态、评分、感想，或点击播放按钮启动。
    卡片也可以拖到左侧“想玩 / 在玩 / 已通关 / 搁置”修改状态，网格和列表视图均支持。
 右上角调色盘按钮可选择青苔绿、樱花粉、雾蓝；应用会记住上次配色。
 
 4. 使用左下角“导出备份”。恢复前会自动备份当前库，并询问是否替换。
 
-Mac 目录与 Windows 虚拟机的路径不同，请在 Windows 内选择路径。程序只负责启动目标 exe，不提供转区、兼容层、管理员提权或游戏运行库安装。
+Mac 目录与 Windows 虚拟机的路径不同，请在 Windows 内选择路径。内置吉里吉里 Z 在独立窗口中运行，不是安卓模拟器；不提供转区、管理员提权或游戏运行库安装。Windows ARM64 使用 Windows 11 自带的 x86 仿真运行内置的 32 位引擎。
 
 ## Mac 开发和预览
 
@@ -58,7 +59,9 @@ npm run dist:win
 
 ## 数据与恢复
 
-Windows 数据通常在 `%APPDATA%\Hanami`，Mac 通常在 `~/Library/Application Support/Hanami`。目录包含 `library.json`、`library.previous.json` 和 `covers/`，请优先使用应用内完整备份，而不是单独复制 JSON。
+Windows 数据通常在 `%APPDATA%\Hanami`，Mac 通常在 `~/Library/Application Support/Hanami`。目录包含 `library.json`、`library.previous.json`、`covers/` 和内置模式的 `saves/<游戏ID的SHA256>/`，请优先使用应用内完整备份，而不是单独复制 JSON。
+
+内置引擎默认存档按收藏 ID 分开，保存在上述 `saves/` 目录；原 exe 的存档不会自动迁入，游戏脚本自定义的位置可能不同。移出收藏时保留存档。
 
 备份文件包含收藏与封面，不含游戏程序、存档。备份中的绝对路径原样保留，换电脑后可在详情中重新选择。
 
@@ -74,4 +77,6 @@ Windows 数据通常在 `%APPDATA%\Hanami`，Mac 通常在 `~/Library/Applicatio
 - `src/renderer`：React 书架和编辑界面。
 - `tests`：领域、存储、备份、启动、界面与服务测试。
 
-验证范围与待测事项以交付目录的 `verification.md` 为准。
+内置引擎来自官方 Kirikiri Z 1.4.0r2，原始二进制及插件未改动（主程序由 tvpwin32.exe 改名为 krkrz.exe）。来源、校验值见 `engines/kirikiri/provenance.json`，原始许可及第三方声明随包保留。
+
+验证范围与待测事项见交付目录各版本的 `verification-*.md`。

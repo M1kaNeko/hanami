@@ -182,3 +182,17 @@ it("JPEG 与 WebP 实际可解码，截断文件被拒绝", async () => {
   await writeFile(join(a, "bad.webp"), webpBytes.subarray(0, 24));
   await expect(importCover(a, join(a, "bad.webp"))).rejects.toThrow();
 });
+it("内置启动方式与空 exe 在备份恢复后保留", async () => {
+  const a = await root(),
+    b = await root();
+  const library = {
+    schemaVersion: 1 as const,
+    games: [{ ...game, launchMode: "kirikiri" as const, executable: "" }],
+  };
+  await exportBackup(a, library, join(a, "copy.json"));
+  await restoreBackup(b, await validateBackup(join(a, "copy.json")));
+  expect((await createStore(b).read()).games[0]).toMatchObject({
+    launchMode: "kirikiri",
+    executable: "",
+  });
+});

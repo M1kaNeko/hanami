@@ -450,3 +450,24 @@ it("直接填写 exe 路径后一次保存也能取得默认封面", async () =>
   await screen.findByRole("button", { name: "查看 直接路径" });
   expect(savedToken).toBe("typed-icon");
 });
+it("选择内置吉里吉里后只选目录即可添加，编辑保留启动方式", async () => {
+  const api = createPreviewApi();
+  api.selectDirectory = async () => ({
+    ok: true,
+    value: "C:\\Games\\Kirikiri",
+  });
+  const user = userEvent.setup();
+  render(<App api={api} />);
+  await screen.findByText("每个故事，都值得珍藏。");
+  await user.click(screen.getAllByRole("button", { name: /添加游戏/ })[0]);
+  await user.selectOptions(screen.getByLabelText("启动方式"), "kirikiri");
+  await user.click(screen.getByRole("button", { name: "选择游戏目录" }));
+  expect(screen.queryByLabelText("启动程序")).not.toBeInTheDocument();
+  await user.click(screen.getByRole("button", { name: "保存游戏" }));
+  await screen.findByRole("button", { name: "查看 Kirikiri" });
+  const result = await api.listGames();
+  expect(result.ok && result.value[0]).toMatchObject({
+    launchMode: "kirikiri",
+    executable: "",
+  });
+});

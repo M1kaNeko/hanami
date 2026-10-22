@@ -1,0 +1,21 @@
+{
+  "engine": "Kirikiri Z",
+  "version": "1.4.0r2 (2017-12-25)",
+  "architecture": "Windows x86 (32-bit)",
+  "source": "https://github.com/krkrz/krkrz",
+  "download": "https://github.com/krkrz/krkrz/releases/download/1.4.0r2/krkrz_20171225r2.7z",
+  "archiveSha256": "a58da24a2e14eac102f0fd8bf66106b22ad238d17a317b8d44b65d68efb574df",
+  "changes": "tvpwin32.exe renamed to krkrz.exe; executable and plugin bytes are unmodified. Original readme.txt and license.txt retained (CP932).",
+  "files": {
+    "krkrz.exe": "9228f50103b2a7bf95c241bef945fa254750840fd1ce4d4ff0b9a5078724175f",
+    "license.txt": "28bf1718122466a3da32dc6f75c3773c7ad64b8e1e8b24e0bd94b006039d0355",
+    "plugin/KAGParser.dll": "aaea83468935c4006432d69aa90629dc6b6edbf43b1144b3cdf8f7c58612863e",
+    "plugin/extrans.dll": "4877232604b39d620ca1122e2089828bad7c4c8c5b69b136fbc8c1974dda1e66",
+    "plugin/krdstheora.dll": "5a169a4c6d82b3f1407c2f0a2989a3727cba815fe99fbba23c9b1761f20df47f",
+    "plugin/kropus.dll": "67961948af6c18708d5cbf60728e4048487aac9f284c4afd375edd929c0c3580",
+    "plugin/krwic.dll": "629b6908e2a6523142763a534a1caefdcb96f6f0628b72bc654b0bff7a596dfc",
+    "plugin/menu.dll": "81477e01e3bfc1d385c2e7a051adeed568ad97f48a58fdcc5f888736b8749081",
+    "plugin/wuvorbis.dll": "6867cd5e481326315383e9d3cfc18f9f63a5ba38ae53d5ca5833a14366c3f0c7",
+    "readme.txt": "b5d63881a0925420c82fd2ab5f277d7551cd063c7e549a41e8f4bc99cecb6124"
+  }
+}

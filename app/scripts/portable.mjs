@@ -27,6 +27,7 @@ await rm(join(target, "resources", "default_app.asar"), { force: true });
 const app = join(target, "resources", "app");
 await mkdir(app, { recursive: true });
 await cp("dist", join(app, "dist"), { recursive: true });
+await cp("engines", join(target, "resources", "engines"), { recursive: true });
 for (const dependency of ["pngjs", "jpeg-js", "webp-wasm"]) {
   await mkdir(join(app, "node_modules"), { recursive: true });
   await cp(
