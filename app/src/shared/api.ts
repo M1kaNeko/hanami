@@ -18,6 +18,7 @@ export interface DesktopApi {
   deleteGame(id: string): Promise<Result<void>>;
   selectDirectory(): Promise<Result<string | null>>;
   selectExecutable(directory: string): Promise<Result<string | null>>;
+  getExecutableCover(executable: string): Promise<Result<Selection | null>>;
   selectCover(): Promise<Result<Selection | null>>;
   launchGame(id: string): Promise<Result<void>>;
   openGameDirectory(id: string): Promise<Result<void>>;

@@ -32,8 +32,13 @@ export async function importCover(
   source: string,
 ): Promise<string> {
   if ((await stat(source)).size > MAX_IMAGE) throw Error("图片不能超过 10 MiB");
-  const data = await readFile(source),
-    type = await validateImage(data),
+  return saveCoverBytes(root, await readFile(source));
+}
+export async function saveCoverBytes(
+  root: string,
+  data: Buffer,
+): Promise<string> {
+  const type = await validateImage(data),
     ref = `${randomUUID()}.${type.ext}`;
   await mkdir(join(root, "covers"), { recursive: true });
   await writeFile(join(root, "covers", ref), data);

@@ -56,14 +56,14 @@ try {
   await page.getByRole("button", { name: "查看 夏日回忆" }).waitFor();
   await page
     .locator(".game-card")
-    .dragTo(page.getByRole("button", { name: /^在玩/ }));
+    .dragTo(page.getByRole("button", { name: /^在玩/ }),{sourcePosition:{x:30,y:35}});
   await page.getByText("已将「夏日回忆」移到在玩", { exact: true }).waitFor();
   let result = await page.evaluate(() => window.desktop.listGames());
   assert.equal(result.value[0].status, "playing");
   await page.getByRole("button", { name: "列表视图" }).click();
   await page
     .locator(".game-card")
-    .dragTo(page.getByRole("button", { name: /^已通关/ }));
+    .dragTo(page.getByRole("button", { name: /^已通关/ }),{sourcePosition:{x:30,y:35}});
   await page.getByText("已将「夏日回忆」移到已通关", { exact: true }).waitFor();
   result = await page.evaluate(() => window.desktop.listGames());
   assert.equal(result.value[0].status, "completed");

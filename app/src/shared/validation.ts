@@ -48,7 +48,16 @@ export function validateDraft(input: unknown): GameDraft {
   if (!Array.isArray(d.tags) || d.tags.length > 30)
     throw Error("标签数量不正确");
   if (d.cover !== null && !validCover(d.cover)) throw Error("封面引用不正确");
+  if (
+    d.coverSource !== undefined &&
+    d.coverSource !== "manual" &&
+    d.coverSource !== "executable"
+  )
+    throw Error("封面来源不正确");
   return {
+    ...(d.coverSource === undefined
+      ? {}
+      : { coverSource: d.coverSource as GameDraft["coverSource"] }),
     name,
     directory,
     executable,

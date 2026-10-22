@@ -1,3 +1,4 @@
+import { extractExecutableCover } from "./executable-cover";
 import { isTrustedUrl } from "./security";
 import {
   app,
@@ -22,7 +23,12 @@ import { pathToFileURL } from "node:url";
 import { readFile, stat, rm, realpath } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
 import { createService } from "./service";
-import { importCover, validateImage, MAX_IMAGE } from "./covers";
+import {
+  importCover,
+  saveCoverBytes,
+  validateImage,
+  MAX_IMAGE,
+} from "./covers";
 import {
   exportBackup,
   validateBackup,
@@ -51,8 +57,14 @@ else
     const root = app.getPath("userData"),
       service = createService(root);
     let window: BrowserWindow | null = null;
-    const covers = new Map<string, { source: string; preview: string }>(),
+    const covers = new Map<string, { source: string } | { data: Buffer }>(),
       imports = new Map<string, ValidatedBackup>();
+    function rememberCover(candidate: { source: string } | { data: Buffer }) {
+      while (covers.size >= 16) covers.delete(covers.keys().next().value!);
+      const token = randomUUID();
+      covers.set(token, candidate);
+      return token;
+    }
     const productionRoot = resolve(__dirname, "../renderer");
     const dev =
       !app.isPackaged &&
@@ -136,8 +148,13 @@ else
                   const token = checkString(args[2]),
                     selection = covers.get(token);
                   if (!selection) throw Error("封面选择已过期，请重新选择");
-                  imported = await importCover(root, selection.source);
+                  imported =
+                    "data" in selection
+                      ? await saveCoverBytes(root, selection.data)
+                      : await importCover(root, selection.source);
                   draft.cover = imported;
+                  draft.coverSource =
+                    "data" in selection ? "executable" : "manual";
                 }
                 if (draft.cover && !imported) {
                   const old = (await service.list()).find((g) => g.id === id);
@@ -190,6 +207,24 @@ else
               value = picked;
               break;
             }
+            case "getExecutableCover": {
+              const executable = checkString(args[0]);
+              const data = await extractExecutableCover(
+                executable,
+                process.platform,
+                {
+                  stat,
+                  getIcon: (path, options) => app.getFileIcon(path, options),
+                },
+              );
+              value = data
+                ? {
+                    token: rememberCover({ data }),
+                    preview: `data:image/png;base64,${data.toString("base64")}`,
+                  }
+                : null;
+              break;
+            }
             case "selectCover": {
               const picked = selectedPath(
                 await dialog.showOpenDialog(window, {
@@ -211,10 +246,8 @@ else
                 throw Error("封面不能超过 10 MiB");
               const data = await readFile(picked),
                 type = await validateImage(data),
-                token = randomUUID(),
+                token = rememberCover({ source: picked }),
                 preview = `data:${type.mime};base64,${data.toString("base64")}`;
-              covers.clear();
-              covers.set(token, { source: picked, preview });
               value = { token, preview };
               break;
             }

@@ -32,30 +32,77 @@ export function GameEditor({
     [tags, setTags] = useState(game?.tags.join("，") ?? ""),
     [cover, setCover] = useState<Selection | null>(null),
     [error, setError] = useState(""),
-    [busy, setBusy] = useState(false);
+    [busy, setBusy] = useState(false),
+    [coverBusy, setCoverBusy] = useState(false);
+  const coverManual = useRef(
+      Boolean(game?.cover && game.coverSource !== "executable"),
+    ),
+    coverRequest = useRef(0),
+    coverExecutable = useRef(game?.executable ?? "");
   const nameEdited = useRef(Boolean(game?.name.trim()));
   function change<K extends keyof GameDraft>(k: K, value: GameDraft[K]) {
     if (k === "name") nameEdited.current = Boolean(String(value).trim());
-    setDraft((d) => ({ ...d, [k]: value }));
+    if (k === "executable" && !coverManual.current) {
+      coverRequest.current++;
+      coverExecutable.current = "";
+      setCoverBusy(false);
+      setCover(null);
+      setDraft((d) => ({
+        ...d,
+        [k]: value,
+        cover: null,
+        coverSource: undefined,
+      }));
+    } else setDraft((d) => ({ ...d, [k]: value }));
+  }
+  async function defaultCover(executable: string): Promise<Selection | null> {
+    if (coverManual.current) return null;
+    coverExecutable.current = executable.trim();
+    const request = ++coverRequest.current;
+    setCover(null);
+    setDraft((d) => ({ ...d, cover: null, coverSource: undefined }));
+    setCoverBusy(true);
+    try {
+      const result = await api.getExecutableCover(executable);
+      if (request === coverRequest.current && !coverManual.current) {
+        setCover(result.ok ? result.value : null);
+        if (result.ok && result.value)
+          setDraft((d) => ({ ...d, coverSource: "executable" }));
+        return result.ok ? result.value : null;
+      }
+    } catch {
+      /* Default images are optional; an unavailable icon must not block adding a game. */
+    } finally {
+      if (request === coverRequest.current) setCoverBusy(false);
+    }
+    return null;
   }
   async function browse(type: "directory" | "executable" | "cover") {
     setError("");
     try {
       if (type === "directory") {
         const dir = unwrap(await api.selectDirectory());
-        if (dir)
+        if (dir) {
+          if (!coverManual.current) {
+            coverRequest.current++;
+            setCoverBusy(false);
+            setCover(null);
+          }
           setDraft((d) => ({
             ...d,
             directory: dir,
             executable: "",
+            cover: coverManual.current ? d.cover : null,
+            coverSource: coverManual.current ? d.coverSource : undefined,
             name: nameEdited.current
               ? d.name
               : (dir.split(/[\\/]/).filter(Boolean).at(-1) || "").slice(0, 200),
           }));
+        }
       } else if (type === "executable") {
         if (!draft.directory) throw Error("请先选择或填写游戏目录");
         const file = unwrap(await api.selectExecutable(draft.directory));
-        if (file)
+        if (file) {
           setDraft((d) => {
             const suggested = (
               d.directory.split(/[\\/]/).filter(Boolean).at(-1) ?? ""
@@ -66,9 +113,17 @@ export function GameEditor({
               name: nameEdited.current ? d.name : suggested,
             };
           });
+          await defaultCover(file);
+        }
       } else {
         const image = unwrap(await api.selectCover());
-        if (image) setCover(image);
+        if (image) {
+          coverManual.current = true;
+          coverRequest.current++;
+          setCoverBusy(false);
+          setCover(image);
+          setDraft((d) => ({ ...d, coverSource: "manual" }));
+        }
       }
     } catch (e) {
       setError((e as Error).message);
@@ -76,9 +131,17 @@ export function GameEditor({
   }
   async function save(e: FormEvent) {
     e.preventDefault();
+    if (coverBusy) return;
     setError("");
     setBusy(true);
     try {
+      let chosen = cover;
+      if (
+        !coverManual.current &&
+        draft.executable.trim() !== coverExecutable.current
+      ) {
+        chosen = await defaultCover(draft.executable.trim());
+      }
       const valid = validateDraft({
         ...draft,
         tags: tags
@@ -86,7 +149,7 @@ export function GameEditor({
           .map((s) => s.trim())
           .filter(Boolean),
       });
-      onSaved(unwrap(await api.saveGame(valid, game?.id, cover?.token)));
+      onSaved(unwrap(await api.saveGame(valid, game?.id, chosen?.token)));
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -108,7 +171,13 @@ export function GameEditor({
         )}
         <div className="form-cover">
           <div className="cover-preview">
-            {img ? <img src={img} alt="封面预览" /> : <ImagePlus size={23} />}
+            {coverBusy ? (
+              <span className="hint">提取图标…</span>
+            ) : img ? (
+              <img src={img} alt="封面预览" />
+            ) : (
+              <ImagePlus size={23} />
+            )}
           </div>
           <div>
             <button
@@ -123,7 +192,7 @@ export function GameEditor({
             <p className="hint">
               PNG / JPG / WebP · 最大 10 MiB
               <br />
-              也可以先留空，稍后再添加。
+              选择程序后默认使用 exe 图标。
             </p>
           </div>
           {img && (
@@ -131,8 +200,15 @@ export function GameEditor({
               type="button"
               className="cover-clear"
               onClick={() => {
+                coverManual.current = false;
+                coverRequest.current++;
+                setCoverBusy(false);
                 setCover(null);
-                change("cover", null);
+                setDraft((d) => ({
+                  ...d,
+                  cover: null,
+                  coverSource: undefined,
+                }));
               }}
             >
               移除
@@ -184,6 +260,19 @@ export function GameEditor({
                   placeholder="选择游戏目录里的 .exe 文件"
                   value={draft.executable}
                   onChange={(e) => change("executable", e.target.value)}
+                  onBlur={(e) => {
+                    if (
+                      e.relatedTarget instanceof HTMLButtonElement &&
+                      e.relatedTarget.type === "submit"
+                    )
+                      return;
+                    const value = e.target.value.trim();
+                    if (
+                      /\.exe$/i.test(value) &&
+                      value !== coverExecutable.current
+                    )
+                      void defaultCover(value);
+                  }}
                 />
                 <button
                   type="button"
@@ -260,9 +349,13 @@ export function GameEditor({
           >
             取消
           </button>
-          <button className="primary" type="submit" disabled={busy}>
+          <button
+            className="primary"
+            type="submit"
+            disabled={busy || coverBusy}
+          >
             <Save size={14} />
-            {busy ? "正在保存…" : "保存游戏"}
+            {busy ? "正在保存…" : coverBusy ? "提取图标…" : "保存游戏"}
           </button>
         </div>
       </form>

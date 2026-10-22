@@ -59,6 +59,7 @@ export function createPreviewApi(): DesktopApi {
     selectDirectory: async () =>
       failure("浏览器预览请手动填写路径；桌面版可选择文件夹"),
     selectExecutable: async () => failure("浏览器预览请手动填写 .exe 路径"),
+    getExecutableCover: async () => success(null),
     selectCover: async () =>
       new Promise((resolve) => {
         const input = document.createElement("input");

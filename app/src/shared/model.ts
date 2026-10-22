@@ -10,6 +10,7 @@ export interface GameDraft {
   directory: string;
   executable: string;
   cover: string | null;
+  coverSource?: "manual" | "executable";
   tags: string[];
   status: GameStatus;
   rating: number | null;

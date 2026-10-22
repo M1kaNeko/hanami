@@ -10,6 +10,7 @@ const api: DesktopApi = {
   deleteGame: (id) => call("deleteGame", id),
   selectDirectory: () => call("selectDirectory"),
   selectExecutable: (dir) => call("selectExecutable", dir),
+  getExecutableCover: (exe) => call("getExecutableCover", exe),
   selectCover: () => call("selectCover"),
   launchGame: (id) => call("launchGame", id),
   openGameDirectory: (id) => call("openGameDirectory", id),
