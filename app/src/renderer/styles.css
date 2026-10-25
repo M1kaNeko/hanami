@@ -1173,3 +1173,34 @@ button:active {
 .theme-note {
   margin-top: 22px;
 }
+
+/* Desktop bookshelf: clearer titles, controls and interaction states. */
+button:focus-visible, select:focus-visible, input:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+.library-toolbar { gap: 12px; flex-wrap: wrap; }
+.search { min-width: 180px; }
+.search:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.result-count { color: #667060; font-size: 12px; white-space: nowrap; }
+.tag-select { font-size: 12px; color: var(--accent); border-color: var(--border); }
+.nav button { min-height: 44px; border-radius: 10px; }
+.nav button.active { box-shadow: inset 3px 0 var(--accent); }
+.game-card { border-radius: 12px; transition: box-shadow .18s ease, transform .18s ease; }
+.game-card:hover { transform: translateY(-3px); box-shadow: 0 10px 28px #25372916; }
+.game-info h3 { font-size: 14px; line-height: 1.5; }
+.card-bottom small { color: #687262; font-size: 12px; }
+.play-small { min-width: 32px; min-height: 32px; border-radius: 50%; }
+.play-small:hover { background: var(--accent); color: white; }
+.cards.list { grid-template-columns: 1fr; gap: 10px; }
+.cards.list .game-card { align-items: center; padding: 10px; gap: 18px; }
+.cards.list .cover-button { width: 60px; flex: 0 0 60px; border-radius: 6px; overflow: hidden; }
+.cards.list .game-info { padding: 4px 10px 4px 0; min-width: 0; }
+.cards.list .game-info h3 { margin: 0 0 8px; white-space: normal; }
+.detail-info h3 { overflow-wrap: anywhere; line-height: 1.5; }
+.path-text { overflow-wrap: anywhere; }
+@media (prefers-reduced-motion: reduce) {
+  .game-card { transition: none; }
+  .game-card:hover { transform: none; }
+}

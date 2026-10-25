@@ -33,17 +33,29 @@ export function validateDraft(input: unknown): GameDraft {
   const d = record(input);
   const name = text(d.name, 200, true),
     directory = text(d.directory, 4000, true),
-    executable = text(d.executable, 4000, d.launchMode !== "kirikiri");
+    executable = text(
+      d.executable,
+      4000,
+      d.launchMode !== "kirikiri" && d.launchMode !== "native",
+    );
   if (
     d.launchMode !== undefined &&
     d.launchMode !== "executable" &&
-    d.launchMode !== "kirikiri"
+    d.launchMode !== "kirikiri" &&
+    d.launchMode !== "native"
   )
     throw Error("启动方式不正确");
-  if (d.launchMode !== "kirikiri" && !/\.exe$/i.test(executable))
+  if (
+    d.launchMode !== "kirikiri" &&
+    d.launchMode !== "native" &&
+    !/\.exe$/i.test(executable)
+  )
     throw Error("请选择 .exe 启动程序");
-  if (d.launchMode === "kirikiri" && executable !== "")
-    throw Error("内置吉里吉里模式只需选择游戏目录");
+  if (
+    (d.launchMode === "kirikiri" || d.launchMode === "native") &&
+    executable !== ""
+  )
+    throw Error("此启动方式只需选择游戏目录");
   if (typeof d.status !== "string" || !Object.hasOwn(statuses, d.status))
     throw Error("游玩状态不正确");
   if (
@@ -118,7 +130,11 @@ export function validateLibrary(input: unknown): Library {
 export function launchKey(
   game: Pick<GameDraft, "executable" | "directory" | "launchMode">,
 ): string {
-  return game.launchMode === "kirikiri"
-    ? "kirikiri:" + normalizeExecutable(game.directory)
+  return game.launchMode === "kirikiri" || game.launchMode === "native"
+    ? game.launchMode +
+        ":" +
+        (game.launchMode === "native"
+          ? game.directory.replace(/\/+$/, "")
+          : normalizeExecutable(game.directory))
     : normalizeExecutable(game.executable);
 }

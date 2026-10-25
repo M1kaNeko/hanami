@@ -66,13 +66,71 @@ export default function App({ api = desktopApi }: { api?: DesktopApi }) {
       localStorage.setItem("hanami.theme", theme);
     } catch {}
   }, [theme]);
+  const [scan, setScan] = useState<
+    | {
+        name: string;
+        directory: string;
+        executables: string[];
+        selected: string;
+      }[]
+    | null
+  >(null);
+  async function scanFolder() {
+    await action(async () => {
+      const result = unwrap(await api.scanGames!());
+      if (result)
+        setScan(
+          result.map((g) => ({
+            ...g,
+            selected: g.executables.length === 1 ? g.executables[0] : "",
+          })),
+        );
+    });
+  }
+  async function importScan() {
+    await action(async () => {
+      let count = 0;
+      const remaining = [...(scan ?? [])];
+      for (const g of scan ?? []) {
+        if (!g.selected) continue;
+        const saved = unwrap(
+          await api.saveGame({
+            name: g.name,
+            directory: g.directory,
+            executable: g.selected,
+            launchMode: "executable",
+            cover: null,
+            tags: [],
+            status: "wishlist",
+            rating: null,
+            notes: "",
+          }),
+        );
+        setGames((current) => [...current, saved]);
+        remaining.splice(remaining.indexOf(g), 1);
+        setScan([...remaining]);
+        count++;
+      }
+      setScan(null);
+      notify(`已添加 ${count} 部游戏`);
+    });
+  }
   const [games, setGames] = useState<Game[]>([]),
     [loaded, setLoaded] = useState(false),
     [loadError, setLoadError] = useState(""),
     [status, setStatus] = useState<GameStatus | "all">("all"),
     [query, setQuery] = useState(""),
     [tag, setTag] = useState<string | null>(null),
-    [layout, setLayout] = useState<"grid" | "list">("grid"),
+    [layout, setLayout] = useState<"grid" | "list">(() => {
+      try {
+        return localStorage.getItem("hanami.layout") === "list"
+          ? "list"
+          : "grid";
+      } catch {
+        return "grid";
+      }
+    }),
+    [sort, setSort] = useState("updated"),
     [editor, setEditor] = useState<Game | "new" | null>(null),
     [selectedId, setSelectedId] = useState<string | null>(null),
     [confirmation, setConfirmation] = useState<Confirmation | null>(null),
@@ -115,10 +173,25 @@ export default function App({ api = desktopApi }: { api?: DesktopApi }) {
       ),
     [games],
   );
-  const filtered = useMemo(
-    () => filterGames(games, { query, status, tag }),
-    [games, query, status, tag],
-  );
+  useEffect(() => {
+    try {
+      localStorage.setItem("hanami.layout", layout);
+    } catch {}
+  }, [layout]);
+  const filtered = useMemo(() => {
+    const result = filterGames(games, { query, status, tag });
+    if (sort === "name")
+      result.sort((a, b) =>
+        a.name.localeCompare(b.name, "zh-CN", { numeric: true }),
+      );
+    if (sort === "rating")
+      result.sort((a, b) => (b.rating ?? -1) - (a.rating ?? -1));
+    if (sort === "launched")
+      result.sort((a, b) =>
+        (b.lastLaunchedAt ?? "").localeCompare(a.lastLaunchedAt ?? ""),
+      );
+    return result;
+  }, [games, query, status, tag, sort]);
   const allTags = [...new Set(games.flatMap((g) => g.tags))].sort();
   const selected = games.find((g) => g.id === selectedId);
   const current = navigation.find((n) => n.id === status)!;
@@ -209,9 +282,6 @@ export default function App({ api = desktopApi }: { api?: DesktopApi }) {
     <div className="shell">
       <aside className="sidebar">
         <div className="brand">
-          <div className="brand-icon">
-            <Flower2 size={27} strokeWidth={1.3} />
-          </div>
           <div className="brand-text">
             <h1>花间</h1>
             <small>HANAMI LIBRARY</small>
@@ -256,6 +326,16 @@ export default function App({ api = desktopApi }: { api?: DesktopApi }) {
         </nav>
         <div className="sidebar-bottom">
           <p className="nav-label">书架管理</p>
+          {api.scanGames && api.platform === "win32" && (
+            <button
+              className="sidebar-tool"
+              disabled={busy}
+              onClick={scanFolder}
+            >
+              <FolderOpen size={16} />
+              <span>{busy ? "处理中…" : "扫描主文件夹"}</span>
+            </button>
+          )}
           <button
             className="sidebar-tool"
             disabled={busy}
@@ -274,11 +354,6 @@ export default function App({ api = desktopApi }: { api?: DesktopApi }) {
             <Upload size={16} strokeWidth={1.5} />
             <span>恢复备份</span>
           </button>
-          <p className="sidebar-note">
-            故事会结束，
-            <br />
-            心动会一直留下来。
-          </p>
           <p className="version">HANAMI · v{version}</p>
         </div>
       </aside>
@@ -297,7 +372,7 @@ export default function App({ api = desktopApi }: { api?: DesktopApi }) {
                 ? "浏览器预览"
                 : api.platform === "win32"
                   ? "Windows · 本地书架"
-                  : "Mac · 收藏管理"}
+                  : "Mac · 原生运行"}
             </span>
             <button
               className="icon-button"
@@ -371,7 +446,7 @@ export default function App({ api = desktopApi }: { api?: DesktopApi }) {
               <Search size={16} />
               <input
                 aria-label="搜索游戏"
-                placeholder="搜索游戏、标签…"
+                placeholder="搜索游戏、标签、笔记…"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
               />
@@ -389,6 +464,29 @@ export default function App({ api = desktopApi }: { api?: DesktopApi }) {
                 </option>
               ))}
             </select>
+            <select
+              className="tag-select"
+              aria-label="游戏排序"
+              value={sort}
+              onChange={(e) => setSort(e.target.value)}
+            >
+              <option value="updated">最近更新</option>
+              <option value="launched">最近启动</option>
+              <option value="name">名称顺序</option>
+              <option value="rating">评分优先</option>
+            </select>
+            {(query || tag || status !== "all") && (
+              <button
+                className="secondary"
+                onClick={() => {
+                  setQuery("");
+                  setTag(null);
+                  setStatus("all");
+                }}
+              >
+                清除筛选
+              </button>
+            )}
             <span className="result-count">共 {filtered.length} 部作品</span>
             <div className="view-buttons">
               <button
@@ -518,6 +616,83 @@ export default function App({ api = desktopApi }: { api?: DesktopApi }) {
           </footer>
         </div>
       </main>
+      {scan && (
+        <Modal
+          title="扫描结果 · 勾选启动程序"
+          onClose={() => setScan(null)}
+          busy={busy}
+        >
+          <p className="hint">
+            跳过已入库入口。多个 exe 的目录需手动选择；不确定的项目可以不添加。
+          </p>
+          {!scan.length && <p>没有找到新的游戏入口。</p>}
+          <div style={{ maxHeight: "50vh", overflowY: "auto" }}>
+            {scan.map((g, i) => (
+              <div className="detail-section" key={g.directory}>
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={!!g.selected}
+                    disabled={busy}
+                    onChange={(e) =>
+                      setScan((current) =>
+                        current!.map((v, n) =>
+                          n === i
+                            ? {
+                                ...v,
+                                selected: e.target.checked
+                                  ? v.executables[0]
+                                  : "",
+                              }
+                            : v,
+                        ),
+                      )
+                    }
+                  />{" "}
+                  {g.name}
+                </label>
+                <p className="path-text">{g.directory}</p>
+                <select
+                  aria-label={`${g.name} 启动程序`}
+                  disabled={busy}
+                  value={g.selected}
+                  onChange={(e) =>
+                    setScan((current) =>
+                      current!.map((v, n) =>
+                        n === i ? { ...v, selected: e.target.value } : v,
+                      ),
+                    )
+                  }
+                  style={{ maxWidth: "100%" }}
+                >
+                  <option value="">不添加</option>
+                  {g.executables.map((exe) => (
+                    <option key={exe} value={exe}>
+                      {exe.split(/[\\/]/).pop()}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ))}
+          </div>
+          <div className="form-footer">
+            <button
+              className="secondary"
+              disabled={busy}
+              onClick={() => setScan(null)}
+            >
+              取消
+            </button>
+            <button
+              className="primary"
+              disabled={busy || !scan.some((g) => g.selected)}
+              onClick={importScan}
+            >
+              添加选中的 {scan.filter((g) => g.selected).length} 部
+            </button>
+          </div>
+        </Modal>
+      )}
       {themeOpen && (
         <Modal title="书架配色" onClose={() => setThemeOpen(false)}>
           <p className="theme-description">给你的书架换一种心情。</p>

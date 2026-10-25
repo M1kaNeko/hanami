@@ -9,6 +9,7 @@ export interface Selection {
 export interface DesktopApi {
   platform: string;
   preview: boolean;
+  scanGames?(): Promise<Result<{ name: string; directory: string; executables: string[] }[] | null>>;
   listGames(): Promise<Result<Game[]>>;
   saveGame(
     draft: GameDraft,

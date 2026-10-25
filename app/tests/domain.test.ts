@@ -84,3 +84,13 @@ it("吉里吉里目录启动无需 exe，模式会随书架保存", () => {
   expect(() => validateDraft({ ...draft, launchMode: "other" })).toThrow();
   expect(() => validateDraft({ ...draft, executable: "" })).toThrow();
 });
+it("原生启动模式可保存 POSIX 目录且不需要 exe", () => {
+  expect(
+    validateDraft({
+      ...draft,
+      directory: "/Games/One",
+      executable: "",
+      launchMode: "native",
+    }),
+  ).toMatchObject({ launchMode: "native", executable: "" });
+});

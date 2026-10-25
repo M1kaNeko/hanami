@@ -9,7 +9,7 @@ export function filterGames(
       (g) =>
         (filter.status === "all" || g.status === filter.status) &&
         (!filter.tag || g.tags.includes(filter.tag)) &&
-        (!q || [g.name, ...g.tags].join(" ").toLocaleLowerCase().includes(q)),
+        (!q || [g.name, ...g.tags, g.notes].join(" ").toLocaleLowerCase().includes(q)),
     )
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
 }

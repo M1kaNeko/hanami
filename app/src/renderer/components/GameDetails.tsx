@@ -55,7 +55,11 @@ export function GameDetails({
         <h4>游戏路径</h4>
         <p className="hint">
           启动方式：
-          {game.launchMode === "kirikiri" ? "内置吉里吉里 Z" : "直接启动 exe"}
+          {game.launchMode === "native"
+            ? "Mac 原生运行（自动识别）"
+            : game.launchMode === "kirikiri"
+              ? "内置吉里吉里 Z"
+              : "直接启动 exe"}
         </p>
         <p className="path-text">
           {game.directory}

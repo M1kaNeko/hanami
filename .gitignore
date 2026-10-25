@@ -5,3 +5,9 @@ work/
 .superpowers/
 .DS_Store
 outputs/*.zip
+app/engines/renpy-*/
+
+Thumbs.db
+.env
+.env.*
+*.log

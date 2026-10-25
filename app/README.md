@@ -80,3 +80,13 @@ Windows 数据通常在 `%APPDATA%\Hanami`，Mac 通常在 `~/Library/Applicatio
 内置引擎来自官方 Kirikiri Z 1.4.0r2，原始二进制及插件未改动（主程序由 tvpwin32.exe 改名为 krkrz.exe）。来源、校验值见 `engines/kirikiri/provenance.json`，原始许可及第三方声明随包保留。
 
 验证范围与待测事项见交付目录各版本的 `verification-*.md`。
+
+## Mac 原生测试版 0.2.0
+
+Apple Silicon 版本使用 `npm run pack:mac` 打包，保留 Electron 框架的相对符号链接并执行本机临时签名校验。发布包约 160 MB，解压约 380 MB。
+
+添加游戏时选择「Mac 原生」和完整游戏目录。当前识别 TyranoScript、Ren’Py 7.3.5 和 8.1.1；其他版本会说明原因。Ren’Py 7 的 Intel 组件需要 Rosetta。此功能不提供通用 Windows exe 兼容层。
+
+Ren’Py 使用应用数据目录中的独立启动工程及存档目录；Tyrano 使用每部游戏独立的浏览器会话。请另外保留游戏存档，收藏库备份不能代替存档备份。完整存读档兼容性仍需逐游戏验证。
+
+准备原生组件：先将对应官方 SDK 解压至同一个目录，再运行 `node scripts/prepare-mac-runtimes.mjs <SDK父目录>`。组件许可证和来源保存在各运行库目录中。

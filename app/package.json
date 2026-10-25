@@ -1,7 +1,7 @@
 {
   "name": "galgame-manager",
   "productName": "花间 · Galgame 管理器",
-  "version": "0.1.4",
+  "version": "0.2.1",
   "private": true,
   "description": "你的本地 galgame 书架",
   "author": "Mika",
@@ -14,7 +14,7 @@
     "build": "vite build --configLoader runner && node scripts/build.mjs",
     "dist:win": "npm run build && electron-builder --win nsis --x64",
     "dist:win:arm64": "npm run build && electron-builder --win nsis --arm64",
-    "pack:mac": "npm run build && electron-builder --mac dir",
+    "pack:mac": "npm run build && node scripts/package-mac.mjs",
     "portable:win:arm64": "npm run build && node scripts/portable.mjs arm64",
     "portable:win:x64": "npm run build && node scripts/portable.mjs x64"
   },
@@ -74,8 +74,8 @@
     },
     "extraResources": [
       {
-        "from": "engines",
-        "to": "engines",
+        "from": "engines/kirikiri",
+        "to": "engines/kirikiri",
         "filter": [
           "**/*"
         ]

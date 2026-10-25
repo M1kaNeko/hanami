@@ -27,7 +27,14 @@ export function GameEditor({
   onSaved: (g: Game) => void;
 }) {
   const [draft, setDraft] = useState<GameDraft>(
-      game ? { ...game } : { ...fresh },
+      game
+        ? { ...game }
+        : {
+            ...fresh,
+            ...(api.platform === "darwin"
+              ? { launchMode: "native" as const }
+              : {}),
+          },
     ),
     [tags, setTags] = useState(game?.tags.join("，") ?? ""),
     [cover, setCover] = useState<Selection | null>(null),
@@ -56,7 +63,12 @@ export function GameEditor({
     } else setDraft((d) => ({ ...d, [k]: value }));
   }
   async function defaultCover(executable: string): Promise<Selection | null> {
-    if (coverManual.current || draft.launchMode === "kirikiri") return null;
+    if (
+      coverManual.current ||
+      draft.launchMode === "kirikiri" ||
+      draft.launchMode === "native"
+    )
+      return null;
     coverExecutable.current = executable.trim();
     const request = ++coverRequest.current;
     setCover(null);
@@ -138,6 +150,7 @@ export function GameEditor({
       let chosen = cover;
       if (
         draft.launchMode !== "kirikiri" &&
+        draft.launchMode !== "native" &&
         !coverManual.current &&
         draft.executable.trim() !== coverExecutable.current
       ) {
@@ -193,7 +206,7 @@ export function GameEditor({
             <p className="hint">
               PNG / JPG / WebP · 最大 10 MiB
               <br />
-              {draft.launchMode === "kirikiri"
+              {draft.launchMode === "kirikiri" || draft.launchMode === "native"
                 ? "内置引擎模式可手动选择封面。"
                 : "选择程序后默认使用 exe 图标。"}
             </p>
@@ -256,9 +269,17 @@ export function GameEditor({
                   }));
                 }}
               >
-                <option value="executable">直接启动 exe</option>
+                <option value="native">Mac 原生运行（自动识别）</option>
+                <option value="executable">直接启动 exe（Windows）</option>
                 <option value="kirikiri">内置吉里吉里 Z</option>
               </select>
+              {draft.launchMode === "native" && (
+                <span className="hint">
+                  选择完整游戏文件夹，自动识别 Tyrano 和 Ren’Py 7.3.5 /
+                  8.1.1；不需要 exe。7.3.5 在 Apple Silicon 上需要 Rosetta
+                  2。存档与 Windows 版本分开，书架备份不包含存档。
+                </span>
+              )}
               {draft.launchMode === "kirikiri" && (
                 <span className="hint">
                   选择含 startup.tjs、data/startup.tjs 或 data.xp3
@@ -273,7 +294,11 @@ export function GameEditor({
                 <input
                   aria-label="游戏目录"
                   required
-                  placeholder="例如 D:\Games\Summer"
+                  placeholder={
+                    draft.launchMode === "native"
+                      ? "选择 Mac 上的游戏文件夹"
+                      : "例如 D:\\Games\\Summer"
+                  }
                   value={draft.directory}
                   onChange={(e) => change("directory", e.target.value)}
                 />
@@ -287,44 +312,45 @@ export function GameEditor({
                 </button>
               </div>
             </label>
-            {draft.launchMode !== "kirikiri" && (
-              <label className="field full">
-                启动程序
-                <div className="input-action">
-                  <input
-                    aria-label="启动程序"
-                    required
-                    placeholder="选择游戏目录里的 .exe 文件"
-                    value={draft.executable}
-                    onChange={(e) => change("executable", e.target.value)}
-                    onBlur={(e) => {
-                      if (
-                        e.relatedTarget instanceof HTMLButtonElement &&
-                        e.relatedTarget.type === "submit"
-                      )
-                        return;
-                      const value = e.target.value.trim();
-                      if (
-                        /\.exe$/i.test(value) &&
-                        value !== coverExecutable.current
-                      )
-                        void defaultCover(value);
-                    }}
-                  />
-                  <button
-                    type="button"
-                    className="secondary"
-                    aria-label="选择启动程序"
-                    onClick={() => browse("executable")}
-                  >
-                    <FolderOpen size={15} />
-                  </button>
-                </div>
-                <span className="hint">
-                  在 Windows 中选择游戏实际所在的路径。
-                </span>
-              </label>
-            )}
+            {draft.launchMode !== "kirikiri" &&
+              draft.launchMode !== "native" && (
+                <label className="field full">
+                  启动程序
+                  <div className="input-action">
+                    <input
+                      aria-label="启动程序"
+                      required
+                      placeholder="选择游戏目录里的 .exe 文件"
+                      value={draft.executable}
+                      onChange={(e) => change("executable", e.target.value)}
+                      onBlur={(e) => {
+                        if (
+                          e.relatedTarget instanceof HTMLButtonElement &&
+                          e.relatedTarget.type === "submit"
+                        )
+                          return;
+                        const value = e.target.value.trim();
+                        if (
+                          /\.exe$/i.test(value) &&
+                          value !== coverExecutable.current
+                        )
+                          void defaultCover(value);
+                      }}
+                    />
+                    <button
+                      type="button"
+                      className="secondary"
+                      aria-label="选择启动程序"
+                      onClick={() => browse("executable")}
+                    >
+                      <FolderOpen size={15} />
+                    </button>
+                  </div>
+                  <span className="hint">
+                    在 Windows 中选择游戏实际所在的路径。
+                  </span>
+                </label>
+              )}
             <label className="field">
               游玩状态
               <select

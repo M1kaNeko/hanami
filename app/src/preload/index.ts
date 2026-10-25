@@ -5,6 +5,7 @@ const call = (method: string, ...args: unknown[]) =>
 const api: DesktopApi = {
   platform: process.platform,
   preview: false,
+  scanGames: () => call("scanGames"),
   listGames: () => call("listGames"),
   saveGame: (d, id, token) => call("saveGame", d, id, token),
   deleteGame: (id) => call("deleteGame", id),

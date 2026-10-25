@@ -29,7 +29,7 @@ it("空库引导，添加游戏，编辑评分，筛选区分空结果", async (
   expect(
     await screen.findByRole("button", { name: "查看 夏日回忆" }),
   ).toBeInTheDocument();
-  await user.type(screen.getByPlaceholderText("搜索游戏、标签…"), "不存在");
+  await user.type(screen.getByPlaceholderText("搜索游戏、标签、笔记…"), "不存在");
   expect(await screen.findByText("还没有找到这个故事")).toBeInTheDocument();
   expect(screen.queryByText("每个故事，都值得珍藏。")).not.toBeInTheDocument();
 });
@@ -468,6 +468,26 @@ it("选择内置吉里吉里后只选目录即可添加，编辑保留启动方�
   const result = await api.listGames();
   expect(result.ok && result.value[0]).toMatchObject({
     launchMode: "kirikiri",
+    executable: "",
+  });
+});
+it("Mac 默认原生模式，选择目录直接保存，已有 exe 模式仍可编辑", async () => {
+  const api = createPreviewApi();
+  api.platform = "darwin";
+  api.selectDirectory = async () => ({ ok: true, value: "/Games/My Story" });
+  const user = userEvent.setup();
+  render(<App api={api} />);
+  await screen.findByText("每个故事，都值得珍藏。");
+  await user.click(screen.getAllByRole("button", { name: /添加游戏/ })[0]);
+  expect(screen.getByLabelText("启动方式")).toHaveValue("native");
+  expect(screen.queryByLabelText("启动程序")).not.toBeInTheDocument();
+  await user.click(screen.getByRole("button", { name: "选择游戏目录" }));
+  await user.click(screen.getByRole("button", { name: "保存游戏" }));
+  await screen.findByRole("button", { name: "查看 My Story" });
+  const result = await api.listGames();
+  expect(result.ok && result.value[0]).toMatchObject({
+    launchMode: "native",
+    directory: "/Games/My Story",
     executable: "",
   });
 });

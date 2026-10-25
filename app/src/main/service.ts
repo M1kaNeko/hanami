@@ -12,7 +12,10 @@ import { createStore } from "./store";
 import { launchGame } from "./launcher";
 export function createService(
   root: string,
-  options: { enginePath?: string } = {},
+  options: {
+    enginePath?: string;
+    nativeLaunch?: (game: Game, saveDirectory: string) => Promise<void>;
+  } = {},
 ) {
   const store = createStore(root);
   let queue: Promise<unknown> = Promise.resolve();
@@ -84,16 +87,26 @@ export function createService(
         const library = await store.read(),
           game = library.games.find((g) => g.id === id);
         if (!game) throw Error("这条记录已不存在");
-        await launchGame(
-          game,
-          process.platform,
-          options.enginePath ?? "",
-          join(
-            root,
-            "saves",
-            createHash("sha256").update(game.id).digest("hex"),
-          ),
+        const saveDirectory = join(
+          root,
+          "saves",
+          createHash("sha256").update(game.id).digest("hex"),
         );
+        if (game.launchMode === "native") {
+          if (process.platform !== "darwin" || !options.nativeLaunch)
+            throw Error("此游戏需要在 Mac 版花间中使用原生运行");
+          await options.nativeLaunch(game, saveDirectory);
+        } else
+          await launchGame(
+            game,
+            process.platform,
+            options.enginePath ?? "",
+            join(
+              root,
+              "saves",
+              createHash("sha256").update(game.id).digest("hex"),
+            ),
+          );
         game.lastLaunchedAt = new Date().toISOString();
         await store.save(library);
       }),

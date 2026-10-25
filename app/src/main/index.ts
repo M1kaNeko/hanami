@@ -1,3 +1,6 @@
+import { scanGames } from "./scan-games";
+import { createNativeLauncher } from "./native-launcher";
+import { detectNativeGame } from "./native-game";
 import { assertGamePaths } from "./game-paths";
 import { extractExecutableCover } from "./executable-cover";
 import { isTrustedUrl } from "./security";
@@ -39,6 +42,15 @@ import { validCover, validateDraft } from "../shared/validation";
 import type { Result } from "../shared/api";
 protocol.registerSchemesAsPrivileged([
   {
+    scheme: "game",
+    privileges: {
+      standard: true,
+      secure: true,
+      supportFetchAPI: true,
+      stream: true,
+    },
+  },
+  {
     scheme: "covers",
     privileges: { standard: true, secure: true, supportFetchAPI: true },
   },
@@ -56,6 +68,12 @@ else
   app.whenReady().then(async () => {
     const root = app.getPath("userData"),
       service = createService(root, {
+        nativeLaunch: createNativeLauncher(
+          join(
+            app.isPackaged ? process.resourcesPath : app.getAppPath(),
+            "engines",
+          ),
+        ),
         enginePath: join(
           app.isPackaged ? process.resourcesPath : app.getAppPath(),
           "engines",
@@ -141,6 +159,19 @@ else
                 id = args[1] === undefined ? undefined : checkString(args[1]);
               let imported: string | undefined;
               assertGamePaths(draft, process.platform);
+              if (draft.launchMode === "native") {
+                const previous = id
+                  ? (await service.list()).find((g) => g.id === id)
+                  : undefined;
+                if (
+                  !previous ||
+                  previous.launchMode !== "native" ||
+                  previous.directory !== draft.directory
+                )
+                  draft.directory = (
+                    await detectNativeGame(draft.directory)
+                  ).directory;
+              }
               try {
                 if (args[2]) {
                   const token = checkString(args[2]),
@@ -173,6 +204,14 @@ else
             case "deleteGame":
               value = await service.delete(checkString(args[0]));
               break;
+            case "scanGames": {
+              const root = selectedPath(await dialog.showOpenDialog(window, { title: "选择游戏主文件夹", properties: ["openDirectory"] }));
+              if (!root) { value = null; break; }
+              const existing = await service.list();
+              const used = new Set(existing.map(g => g.executable.toLowerCase()));
+              value = (await scanGames(root)).map(g => ({ ...g, executables: g.executables.filter(p => !used.has(p.toLowerCase())) })).filter(g => g.executables.length);
+              break;
+            }
             case "selectDirectory":
               value = selectedPath(
                 await dialog.showOpenDialog(window, {
